@@ -15,4 +15,4 @@ select
     created as created_at
 
 from {{ source('stripe', 'payments') }}
-
+where amount > 0

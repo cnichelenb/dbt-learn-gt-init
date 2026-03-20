@@ -2,29 +2,111 @@ version: 2
 
 sources:
   - name: jaffle_shop
+    description: A clone of RAW Database
     database: RAW
     schema: JAFFLE_SHOP
     tables:
       - name: customers
+        description: Raw customers data
+        columns:
+          - name: id
+            description: The primary key for customers.
+            data_tests:
+              - unique
+              - not_null
+
       - name: orders
+        description: Raw orders data
         config:
           freshness:
-            warn_after: 
-              {
-                count: 24
-               ,period: hour
-               }
-            error_after: 
-              {
-                count: 48
-               ,period: hour
-              }
+            warn_after:
+              count: 24
+              period: hour
+            error_after:
+              count: 48
+              period: hour
+
   - name: stripe
+    description: Raw Stripe payments data
     database: RAW
     schema: STRIPE
     tables:
       - name: payments
+        description: Raw Stripe payments table
+
 
 models:
+
+  # ---------------------------
+  # stg_jaffle_shop__customers
+  # ---------------------------
   - name: stg_jaffle_shop_customers
+    description: Staged customer data from our jaffle shop app. One unique customer per row.
+    columns:
+      - name: customer_id
+        description: The primary key for customers.
+        data_tests:
+          - unique
+          - not_null
+      - name: first_name
+        description: Customer first name.
+      - name: last_name
+        description: Customer last name.
+
+  # ---------------------------
+  # stg_jaffle_shop__orders
+  # ---------------------------
   - name: stg_jaffle_shop_orders
+    description: Staged order data from our jaffle shop app.
+    columns:
+      - name: order_id
+        description: Primary key for orders.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: status
+        description: "{{ doc('order_status') }}"
+        data_tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - placed
+                  - shipped
+                  - completed
+                  - returned
+                  - return_pending
+
+      - name: customer_id
+        description: Foreign key to stg_jaffle_shop_customers.customer_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_jaffle_shop_customers')
+                field: customer_id
+
+  # ---------------------------
+  # stg_stripe_payments
+  # ---------------------------
+  - name: stg_stripe_payments
+    description: Staged Stripe payment data.
+    columns:
+      - name: payment_id
+        description: Unique identifier for each payment.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: amount
+        description: Total amount of the payment in cents.
+        data_tests:
+          - not_null
+
+      - name: order_id
+        description: Foreign key referencing stg_jaffle_shop_orders.order_id.
+
+      - name: status
+        description: Stripe payment status.
+
+      - name: _batched_at
+        description: Timestamp indicating when the record was loaded.
